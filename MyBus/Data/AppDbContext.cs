@@ -1,13 +1,15 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using MyBus.Models;
 
 namespace MyBus.Data
 {
-    public class AppDbContext : Microsoft.AspNetCore.Identity.EntityFrameworkCore.IdentityDbContext<Users>
+    public class AppDbContext : IdentityDbContext<Users>
     {
         public AppDbContext(DbContextOptions options) : base(options)
         {
-
         }
+
+        public DbSet<BusSchedule> BusSchedules { get; set; }
     }
 }

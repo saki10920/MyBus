@@ -1,0 +1,225 @@
+﻿@model IEnumerable<MyBus.Models.BusSchedule>
+
+@{
+    ViewData["Title"] = "Search Results";
+}
+
+<div class="search-results">
+    @if (ViewBag.Message != null)
+    {
+        <div class="alert alert-warning">@ViewBag.Message</div>
+    }
+    else
+    {
+        <div class="search-summary">
+            <h3>@Model.First().From to @Model.First().To on @Model.First().DepartureDate.ToShortDateString()</h3>
+            <p>Total Buses: @ViewBag.TotalBuses</p>
+            <p>Total Seats: @ViewBag.TotalSeats</p>
+            <a asp-action="Index" class="btn btn-danger">Modify Search</a>
+        </div>
+
+        <div class="sorting-filtering">
+            <button class="btn btn-secondary" onclick="sortResults('departureTime')">Sort by Departure Time</button>
+            <button class="btn btn-secondary" onclick="sortResults('availableSeats')">Sort by Available Seats</button>
+            <button class="btn btn-secondary" onclick="sortResults('fare')">Sort by Fare</button>
+            <button class="btn btn-secondary" onclick="toggleFilterOptions()">Filter By</button>
+        </div>
+
+        <div id="filterOptions" style="display: none;">
+            <h4>Bus Type</h4>
+            <div>
+                <input type="checkbox" id="filterAC" onclick="applyFilters()"> AC
+                <input type="checkbox" id="filterNonAC" onclick="applyFilters()"> Non AC
+                <input type="checkbox" id="filterSleeper" onclick="applyFilters()"> Sleeper
+                <input type="checkbox" id="filterAll" onclick="applyFilters()"> All
+            </div>
+            <h4>Departure Time</h4>
+            <div>
+                <button class="btn btn-secondary" id="before4AM" onclick="filterByTime('before4AM')">Before 4 AM</button>
+                <button class="btn btn-secondary" id="4AMto8AM" onclick="filterByTime('4AMto8AM')">4 AM to 8 AM</button>
+                <button class="btn btn-secondary" id="8AMto12PM" onclick="filterByTime('8AMto12PM')">8 AM to 12 PM</button>
+                <button class="btn btn-secondary" id="12PMto4PM" onclick="filterByTime('12PMto4PM')">12 PM to 4 PM</button>
+                <button class="btn btn-secondary" id="4PMto8PM" onclick="filterByTime('4PMto8PM')">4 PM to 8 PM</button>
+                <button class="btn btn-secondary" id="after8PM" onclick="filterByTime('after8PM')">After 8 PM</button>
+            </div>
+        </div>
+
+        <table class="table" id="resultsTable">
+            <thead>
+                <tr>
+                    <th>Bus Name</th>
+                    <th>Bus Type</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>Departure Time</th>
+                    <th>Arrival Time</th>
+                    <th>Available Seats</th>
+                    <th>Fare</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td>@item.BusName</td>
+                        <td>@item.BusType</td>
+                        <td>@item.From</td>
+                        <td>@item.To</td>
+                        <td>@item.DepartureTime</td>
+                        <td>@item.ArrivalTime</td>
+                        <td>@item.TotalSeat</td>
+                        <td>৳@item.Fare</td>
+                        <td>
+                            @if (item.TotalSeat > 0)
+                            {
+                                <button class="btn btn-danger" onclick="toggleBookingOptions(@item.Id, @item.TotalSeat)">Book Ticket</button>
+                                <div id="bookingOptions-@item.Id" class="booking-options" style="display: none;">
+                                    <form method="post" asp-action="BookTicket">
+                                        <input type="hidden" name="busScheduleId" value="@item.Id" />
+                                        <div class="form-group">
+                                            <label for="numberOfTickets-@item.Id">Number of Tickets</label>
+                                            <input type="number" id="numberOfTickets-@item.Id" name="numberOfTickets" class="form-control" min="1" max="@item.TotalSeat" />
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">Confirm Ticket</button>
+                                    </form>
+                                </div>
+                            }
+                            else
+                            {
+                                <button class="btn btn-secondary" disabled>Sold Out</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        let selectedTimeRanges = [];
+
+        function toggleBookingOptions(busScheduleId, availableSeats) {
+            const bookingOptions = document.getElementById(`bookingOptions-${busScheduleId}`);
+            bookingOptions.style.display = bookingOptions.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function sortResults(criteria) {
+            var rows = $('#resultsTable tbody tr').get();
+            rows.sort(function(a, b) {
+                var A = getCellValue(a, criteria);
+                var B = getCellValue(b, criteria);
+                if (A < B) return -1;
+                if (A > B) return 1;
+                return 0;
+            });
+            $.each(rows, function(index, row) {
+                $('#resultsTable').children('tbody').append(row);
+            });
+        }
+
+        function getCellValue(row, criteria) {
+            switch (criteria) {
+                case 'departureTime':
+                    return $(row).children('td').eq(4).text();
+                case 'availableSeats':
+                    return parseInt($(row).children('td').eq(6).text());
+                case 'fare':
+                    return parseInt($(row).children('td').eq(7).text().replace('৳', ''));
+                default:
+                    return '';
+            }
+        }
+
+        function toggleFilterOptions() {
+            $('#filterOptions').toggle();
+        }
+
+        function applyFilters() {
+            var rows = $('#resultsTable tbody tr').get();
+            var filterAC = $('#filterAC').is(':checked');
+            var filterNonAC = $('#filterNonAC').is(':checked');
+            var filterSleeper = $('#filterSleeper').is(':checked');
+            var filterAll = $('#filterAll').is(':checked');
+
+            $.each(rows, function(index, row) {
+                var busType = $(row).children('td').eq(1).text();
+                var departureTime = $(row).children('td').eq(4).text();
+                var showRow = true;
+
+                if (filterAC || filterNonAC || filterSleeper || filterAll) {
+                    showRow = (filterAC && busType === 'AC') ||
+                              (filterNonAC && busType === 'Non AC') ||
+                              (filterSleeper && busType === 'Sleeper') ||
+                              filterAll;
+                }
+
+                if (selectedTimeRanges.length > 0) {
+                    showRow = showRow && selectedTimeRanges.some(range => isTimeInRange(departureTime, range.start, range.end));
+                }
+
+                $(row).toggle(showRow);
+            });
+        }
+
+        function filterByTime(timeRange) {
+            const button = $('#' + timeRange);
+            const isSelected = button.hasClass('selected');
+
+            if (isSelected) {
+                // Deselect the current time range
+                button.removeClass('selected');
+                selectedTimeRanges = selectedTimeRanges.filter(range => range.range !== timeRange);
+            } else {
+                // Select the new time range
+                button.addClass('selected');
+                switch (timeRange) {
+                    case 'before4AM':
+                        selectedTimeRanges.push({ range: 'before4AM', start: '00:00', end: '03:59' });
+                        break;
+                    case '4AMto8AM':
+                        selectedTimeRanges.push({ range: '4AMto8AM', start: '04:00', end: '07:59' });
+                        break;
+                    case '8AMto12PM':
+                        selectedTimeRanges.push({ range: '8AMto12PM', start: '08:00', end: '11:59' });
+                        break;
+                    case '12PMto4PM':
+                        selectedTimeRanges.push({ range: '12PMto4PM', start: '12:00', end: '15:59' });
+                        break;
+                    case '4PMto8PM':
+                        selectedTimeRanges.push({ range: '4PMto8PM', start: '16:00', end: '19:59' });
+                        break;
+                    case 'after8PM':
+                        selectedTimeRanges.push({ range: 'after8PM', start: '20:00', end: '23:59' });
+                        break;
+                    default:
+                        break;
+                }
+            }
+            applyFilters();
+        }
+
+        function isTimeInRange(time, start, end) {
+            var timeParts = time.split(':');
+            var startParts = start.split(':');
+            var endParts = end.split(':');
+            var timeValue = parseInt(timeParts[0]) * 60 + parseInt(timeParts[1]);
+            var startValue = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+            var endValue = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+            return timeValue >= startValue && timeValue <= endValue;
+        }
+    </script>
+}
+
+<style>
+    .btn-secondary.selected {
+        background-color: #b3b234;
+        color: white;
+    }
+
+    .booking-options {
+        margin-top: 10px;
+    }
+</style>

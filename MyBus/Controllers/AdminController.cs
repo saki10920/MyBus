@@ -16,7 +16,7 @@ namespace MyBus.Controllers
             if (email == "admin.mybus@gmail.com" && password == "adminpassword")
             {
                 
-                return RedirectToAction("Index", "Home");
+                return RedirectToAction("Index", "BusSchedule");
             }
 
             

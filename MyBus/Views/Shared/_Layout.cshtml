@@ -1,4 +1,8 @@
-﻿<!DOCTYPE html>
+﻿@using Microsoft.AspNetCore.Identity
+@inject SignInManager<Users> signInManager
+@inject UserManager<Users> userManager
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -31,6 +35,16 @@
                         </li>
                     </ul>
                     <ul class="navbar-nav ms-auto">
+                        @if (signInManager.IsSignedIn(User))
+                        {
+                            var user = await userManager.GetUserAsync(User);
+                            if (await userManager.IsInRoleAsync(user, "Admin"))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-area="" asp-controller="BusSchedule" asp-action="Index">Manage Bus Schedules</a>
+                                </li>
+                            }
+                        }
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Admin" asp-action="Login">Admin</a>
                         </li>
